@@ -1,0 +1,3 @@
+[submodule "external/xengine"]
+	path = external/xengine
+	url = https://github.com/xanytka-devs/xengine.git

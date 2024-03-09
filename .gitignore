@@ -1,0 +1,61 @@
+# CMake garbage
+CMakeLists.txt.user
+CMakeCache.txt
+CMakeFiles
+CMakeScripts
+Testing
+Makefile
+cmake_install.cmake
+install_manifest.txt
+compile_commands.json
+CTestTestfile.cmake
+_deps
+ZERO_CHECK.log
+external/xengine/*
+
+# Visual Studio garbage
+.vs/
+
+# Other folders
+bin
+out
+build/*
+!build/*/
+build/*/*
+!build/CMakeCache.txt
+!build/imgui.ini
+!build/window_config.ini
+!build/res/*
+
+# Prerequisites
+*.d
+
+# Compiled Object files
+*.slo
+*.lo
+*.o
+*.obj
+
+# Precompiled Headers
+*.gch
+*.pch
+
+# Compiled Dynamic libraries
+*.so
+*.dylib
+*.dll
+
+# Fortran module files
+*.mod
+*.smod
+
+# Compiled Static libraries
+*.lai
+*.la
+*.a
+*.lib
+
+# Executables
+*.exe
+*.out
+*.app
