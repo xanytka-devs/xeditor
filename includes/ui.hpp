@@ -16,9 +16,10 @@ public:
 	};
 
 	static void init();
-	static void setTheme();
+	static void set_theme();
 	static void draw(UIEditorData t_data);
 	static void update_pos(XEngine::Camera* t_camera);
+	static bool can_render;
 };
 
 #endif // UI_H

@@ -8,18 +8,20 @@ namespace fs = std::filesystem;
 #include <xengine/rendering/renderer.hpp>
 #include <xengine/rendering/camera.hpp>
 #include <xengine/enviroment.hpp>
-#include <xengine/io/os.hpp>
+#include <../packages/xengine.io/includes/os.hpp>
 
 #include "components/light_cube.hpp"
 #include "ui.hpp"
 #include <xengine/physics/rigidbody.hpp>
+
+bool UI::can_render = true;
 
 void UI::init() {
     ImGuiIO& io = ImGui::GetIO();
     io.Fonts->AddFontFromFileTTF("res\\consola.ttf", 13, NULL, io.Fonts->GetGlyphRangesCyrillic());
 }
 
-void UI::setTheme() {
+void UI::set_theme() {
     ImGuiStyle& style = ImGui::GetStyle();
 
     // Color palette
@@ -324,6 +326,8 @@ static void setup_dock(XEngine::App* t_app) {
 }
 
 void UI::draw(UIEditorData t_data) {
+    if(!can_render) return;
+    can_render = false;
     //Setup.
     setup_dock(t_data.t_app);
     //Draw ImGui.
@@ -343,13 +347,16 @@ void UI::draw(UIEditorData t_data) {
     if(is_note_open) {
         ImGui::Begin("Note", &is_note_open);
         ImGui::TextWrapped(u8"Добро пожаловать в XEditor!");
-        ImGui::TextWrapped(u8"  XEditor является GUI для програмного слоя XEngine.");
-        ImGui::TextWrapped(u8" В этой версии:");
+        ImGui::TextWrapped(u8"  XEditor является GUI конфигурацией для программного слоя XEngine.");
+        ImGui::Text("");
+        ImGui::TextWrapped(u8"В этой версии:");
         ImGui::TextWrapped(u8"  * Улучшена система столкновений");
         ImGui::TextWrapped(u8"  * Обновлён вид редактора");
         ImGui::TextWrapped(u8"  * Система пакетов");
         ImGui::TextWrapped(u8"  * Процедурная геометрия (плоскость и куб)");
+        ImGui::Text("");
         ImGui::Text(u8"Версия: 0.1");
         ImGui::End();
     }
+    can_render = true;
 }

@@ -5,7 +5,7 @@
 #include <xengine/app.hpp>
 #include <xengine/enviroment.hpp>
 #include <xengine/utils.hpp>
-#include <xengine/audio.hpp>
+#include <../packages/xengine.audio/includes/audio.hpp>
 #include <xengine/input.hpp>
 #include <xengine/rendering/renderer.hpp>
 #include <xengine/rendering/material.hpp>
@@ -48,7 +48,7 @@ Billboard dir_light_gizmo(glm::vec3(0.f, 1.f, 0.f), glm::vec4(glm::vec3(0.f), 1.
     &camera, "res\\gizmos\\dir_light.png");
 
 int LightSource::global_id = 0;
-int Enviroment::scene_id = 0;
+unsigned char Enviroment::scene_id = 0;
 SceneManager Enviroment::scene_manager = SceneManager();
 
 class EditorApp : public App {
@@ -77,6 +77,7 @@ class EditorApp : public App {
         window.ui_initialize();
         UI::init();
         UI::update_pos(&camera);
+        UI::set_theme();
     }
 
     void over_init() {
@@ -177,12 +178,10 @@ class EditorApp : public App {
         dir_light_gizmo.rotation = glm::vec4(dir_light.direction.y, 0.f, 0.f, 1.0f) * 10.f;
         dir_light_gizmo.render(gizmo_shader);
         //UI rendering.
-        UI::setTheme();
         UI::draw({ this, &camera, &lights, &model, Enviroment::get_current_scene() });
     }
 
     bool clicked = false;
-    bool clicked_now = true;
     void input() {
         //On 'Esc' close app.
         if(Keyboard::key_state(KeyCode::ESCAPE) || main_j.button_state(JoystickControls::J_HOME))
@@ -235,7 +234,6 @@ class EditorApp : public App {
                 camera.position -= glm::vec3(0.f, 1.f, 0.f) * (dt * 2.5f);
             //Camera rotation.
             double dx = Mouse::get_cursor_dx(), dy = Mouse::get_cursor_dy();
-            if(clicked_now) dx = dy = 0;
             if(dx != 0 || dy != 0) rotate_camera(dx, dy);
             else if(main_j.is_present()) {
                 dx = main_j.axis_state(JoystickControls::AXES_RIGHT_STICK_X);
@@ -248,7 +246,6 @@ class EditorApp : public App {
                 camera.position += camera.forward * (dt * mouse_dy * 2.5f);
             //Update UI.
             UI::update_pos(&camera);
-            clicked_now = false;
         } else {
             window.set_param(W_CURSOR, C_NONE);
             if(Keyboard::key_state(KeyCode::LEFT_SHIFT) || Keyboard::key_state(KeyCode::RIGHT_SHIFT)) {
@@ -257,7 +254,6 @@ class EditorApp : public App {
                 if (camera.fov < 1.f) camera.fov = 180.f;
                 else if (camera.fov > 180.f) camera.fov = 1.f;
             }
-            clicked_now = true;
         }
         if(Keyboard::key_down(KeyCode::P))
             window.set_param(WindowParam::W_TITLE, "Hello XEngine!");

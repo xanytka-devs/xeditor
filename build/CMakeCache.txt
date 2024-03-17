@@ -500,7 +500,7 @@ glad_BINARY_DIR:STATIC=G:/! New/xeditor/build/external/xengine/xengine/glad
 glad_IS_TOP_LEVEL:STATIC=OFF
 
 //Value Computed by CMake
-glad_SOURCE_DIR:STATIC=G:/! New/xeditor/external/xengine/external/glad
+glad_SOURCE_DIR:STATIC=G:/! New/xeditor/external/xengine/packages/xengine.rendering.opengl/glad
 
 //Value Computed by CMake
 glm_BINARY_DIR:STATIC=G:/! New/xeditor/build/external/xengine/xengine/glm
@@ -510,6 +510,15 @@ glm_IS_TOP_LEVEL:STATIC=OFF
 
 //Value Computed by CMake
 glm_SOURCE_DIR:STATIC=G:/! New/xeditor/external/xengine/external/glm
+
+//Value Computed by CMake
+testing_BINARY_DIR:STATIC=G:/! New/xeditor/build/external/xengine/testing
+
+//Value Computed by CMake
+testing_IS_TOP_LEVEL:STATIC=OFF
+
+//Value Computed by CMake
+testing_SOURCE_DIR:STATIC=G:/! New/xeditor/external/xengine/testing
 
 //Value Computed by CMake
 triangle_demo_BINARY_DIR:STATIC=G:/! New/xeditor/build/external/xengine/examples/triangle_demo
@@ -678,7 +687,7 @@ CMAKE_MODULE_LINKER_FLAGS_RELWITHDEBINFO-ADVANCED:INTERNAL=1
 //ADVANCED property for variable: CMAKE_MT
 CMAKE_MT-ADVANCED:INTERNAL=1
 //number of local generators
-CMAKE_NUMBER_OF_MAKEFILES:INTERNAL=11
+CMAKE_NUMBER_OF_MAKEFILES:INTERNAL=12
 //Platform information initialized
 CMAKE_PLATFORM_INFO_INITIALIZED:INTERNAL=1
 //noop for ranlib
