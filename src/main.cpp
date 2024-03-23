@@ -8,9 +8,7 @@
 #include <../packages/xengine.audio/includes/audio.hpp>
 #include <xengine/input.hpp>
 #include <xengine/rendering/renderer.hpp>
-#include <xengine/rendering/material.hpp>
 #include <xengine/rendering/camera.hpp>
-#include <xengine/rendering/shader.hpp>
 #include <xengine/rendering/window.hpp>
 #include <xengine/rendering/texture.hpp>
 #include <xengine/rendering/light.hpp>
@@ -18,16 +16,14 @@
 #include <xengine/physics/rigidbody.hpp>
 #include <xengine/physics/collider.hpp>
 
+#include "defaults.hpp"
 #include "components/light_cube.hpp"
 #include "components/billboard.hpp"
 #include "ui.hpp"
 
 using namespace XEngine;
 
-Joystick main_j(0);
-Shader base_shader;
-Shader unlit_shader;
-Shader gizmo_shader;
+Joystick main_j;
 Transform model(glm::vec3(0.f), glm::vec4(glm::vec3(0.f), 1.f), glm::vec3(0.05f), "Model");
 glm::vec3 point_light_positions[] = {
         glm::vec3(2.3f, -3.3f, -4.0f),
@@ -43,7 +39,8 @@ SpotLight spot_light = { camera.position, camera.forward, glm::cos(glm::radians(
     glm::cos(glm::radians(20.f)), 1.0f, 0.07f, 0.032f, glm::vec4(0.f), glm::vec4(1.f),
     glm::vec4(1.f), glm::vec4(1.f) };
 Audio a{ "res\\sound.wav", false, {"test", 100.f, 2.f}};
-Material model_mat = { glm::vec4(0), glm::vec4(1), glm::vec4(0), glm::vec4(0), glm::vec4(0), 0.f, 0.5f };
+Material unlit_mat;
+Material gizmo_mat;
 Billboard dir_light_gizmo(glm::vec3(0.f, 1.f, 0.f), glm::vec4(glm::vec3(0.f), 1.f), glm::vec3(0.5f),
     &camera, "res\\gizmos\\dir_light.png");
 
@@ -64,9 +61,9 @@ class EditorApp : public App {
         Enviroment::scene_manager.add_scene(Scene("Example scene"));
         //Initialize component system.
         ComponentRegistry::instance().push<LightSource>();
-        ComponentRegistry::instance().push<Rigidbody>();
         ComponentRegistry::instance().push<BoxCollider>();
         ComponentRegistry::instance().push<SphereCollider>();
+        ComponentRegistry::instance().push<Rigidbody>();
         //Initialize audio manager.
         AudioManager::initialize();
         AudioManager::print_host_info();
@@ -82,21 +79,23 @@ class EditorApp : public App {
 
     void over_init() {
         //Model.
+        xe_def::model_mat.shader = Shader("res\\materials\\object_vert.glsl", "res\\materials\\object_frag.glsl");
         model.load_model("res\\sphere\\scene.gltf");
-        base_shader = Shader("res\\object_vert.glsl", "res\\object_frag.glsl");
-        model.set_material(&model_mat);
+        model.set_material(&xe_def::model_mat);
         model.add_component<Rigidbody>(1.0f, glm::vec3(0.0f), glm::vec3(0.0f), false);
         model.add_component<SphereCollider>();
         model.initialize();
         //Light source.
-        unlit_shader = Shader("res\\object_vert.glsl", "res\\unlit_frag.glsl");
+        unlit_mat.shader = Shader("res\\materials\\object_vert.glsl", "res\\materials\\unlit_frag.glsl");
+        lights.set_material(&unlit_mat);
         lights.add_component<LightSource>();
         lights.get_component<LightSource>().light.ambient = glm::vec4(0.25f);
         for(unsigned int i = 0; i < point_lights_amount; i++)
             lights.create_instance(point_light_positions[i], glm::vec4(0, 0, 0, 1), glm::vec3(0.125f));
         lights.initialize();
         //Gizmo.
-        gizmo_shader = Shader("res\\object_vert.glsl", "res\\billboard_frag.glsl");
+        gizmo_mat.shader = Shader("res\\materials\\object_vert.glsl", "res\\materials\\billboard_frag.glsl");
+        dir_light_gizmo.set_material(&gizmo_mat);
         dir_light_gizmo.initialize();
     }
 
@@ -119,66 +118,67 @@ class EditorApp : public App {
     bool flashlight = false;
 	virtual void update() override {
         if(is_reloading) return;
+        if(window.height <= 0) return;
+        //Collisions.
+        CollissionSystem::instance().update();
         //Take care of input.
         input();
         //Create transformations.
         camera.aspect = static_cast<float>(window.width) / static_cast<float>(window.height);
         glm::mat4 view = camera.get_view_matrix();
         glm::mat4 projection = camera.get_projection_matrix();
-        //Render model.
-        base_shader.enable();
-        base_shader.set_3_floats("view_pos", camera.position);
-        model.set_material(&model_mat);
         //Light.
         dir_light.direction = glm::vec3(
             glm::rotate(glm::mat4(1.f), glm::radians(0.1f), glm::vec3(1.f, 0.f, 0.f)) *
             glm::vec4(dir_light.direction, 1.f)
         );
         //Directional light.
-        dir_light.render(base_shader);
+        dir_light.render(xe_def::model_mat.shader);
         if(!flashlight) {
             //Point light.
-            lights.render_light(base_shader);
-            base_shader.set_int("num_point_lights", LightSource::global_id);
+            lights.render_light(xe_def::model_mat.shader);
+            xe_def::model_mat.shader.set_int("num_point_lights", LightSource::global_id);
             //Spot light.
-            base_shader.set_int("num_spot_lights", 0);
+            xe_def::model_mat.shader.set_int("num_spot_lights", 0);
         } else {
             //Point light.
-            base_shader.set_int("num_point_lights", 0);
+            xe_def::model_mat.shader.set_int("num_point_lights", 0);
             //Spot light.
             spot_light.position = camera.position;
             spot_light.direction = camera.forward;
-            spot_light.render(base_shader, 0);
-            base_shader.set_int("num_spot_lights", 1);
+            spot_light.render(xe_def::model_mat.shader, 0);
+            xe_def::model_mat.shader.set_int("num_spot_lights", 1);
         }
-        //Set material params.
-        Material mat = model.get_material();
-        base_shader.set_4_floats("material.diffuse", mat.diffuse);
-        base_shader.set_4_floats("material.specular", mat.specular);
-        base_shader.set_4_floats("material.emission", mat.emission);
-        base_shader.set_4_floats("material.emission_color", mat.emission_color);
-        base_shader.set_float("material.shininess", mat.shininess);
-        base_shader.set_float("material.emission_factor", mat.emission_factor);
-        base_shader.set_mat4("projection", projection);
-        base_shader.set_mat4("view", view);
-        base_shader.set_int("render_mode", mode);
-        model.render(base_shader);
+        //Model.
+        xe_def::model_mat.shader.enable();
+        xe_def::model_mat.shader.set_3_floats("view_pos", camera.position);
+        xe_def::model_mat.shader.set_4_floats("material.diffuse", xe_def::model_mat.diffuse);
+        xe_def::model_mat.shader.set_4_floats("material.specular", xe_def::model_mat.specular);
+        xe_def::model_mat.shader.set_4_floats("material.emission", xe_def::model_mat.emission);
+        xe_def::model_mat.shader.set_4_floats("material.emission_color", xe_def::model_mat.emission_color);
+        xe_def::model_mat.shader.set_float("material.shininess", xe_def::model_mat.shininess);
+        xe_def::model_mat.shader.set_float("material.emission_factor", xe_def::model_mat.emission_factor);
+        xe_def::model_mat.shader.set_mat4("projection", projection);
+        xe_def::model_mat.shader.set_mat4("view", view);
+        xe_def::model_mat.shader.set_int("render_mode", mode);
         //Render light.
-        unlit_shader.enable();
-        unlit_shader.set_mat4("projection", projection);
-        unlit_shader.set_mat4("view", view);
-        unlit_shader.set_int("render_mode", mode);
-        unlit_shader.set_4_floats("color", lights.color);
-        if(!flashlight) lights.render(unlit_shader);
+        unlit_mat.shader.enable();
+        unlit_mat.shader.set_mat4("projection", projection);
+        unlit_mat.shader.set_mat4("view", view);
+        unlit_mat.shader.set_int("render_mode", mode);
+        unlit_mat.shader.set_4_floats("color", lights.color);
         //Gizmo.
-        gizmo_shader.set_mat4("projection", projection);
-        gizmo_shader.set_mat4("view", view);
-        gizmo_shader.set_4_floats("albedo_color", dir_light.color);
-        gizmo_shader.set_int("render_mode", mode);
+        gizmo_mat.shader.enable();
+        gizmo_mat.shader.set_mat4("projection", projection);
+        gizmo_mat.shader.set_mat4("view", view);
+        gizmo_mat.shader.set_4_floats("albedo_color", dir_light.color);
+        gizmo_mat.shader.set_int("render_mode", mode);
         dir_light_gizmo.rotation = glm::vec4(dir_light.direction.y, 0.f, 0.f, 1.0f) * 10.f;
-        dir_light_gizmo.render(gizmo_shader);
+        //Render all transforms.
+        for(Transform* t : Enviroment::get_current_scene()->transforms)
+            t->render();
         //UI rendering.
-        UI::draw({ this, &camera, &lights, &model, Enviroment::get_current_scene() });
+        UI::draw({ this, &camera, Enviroment::get_current_scene(), &xe_def::model_mat });
     }
 
     bool clicked = false;
@@ -264,7 +264,7 @@ class EditorApp : public App {
             else Renderer::set_clear_color(glm::vec3(0.15f, 0.15f, 0.15f));
         }
         //Sound button.
-        if(Keyboard::key_down(KeyCode::V) || main_j.button_state(JoystickControls::BTN_DOWN))
+        if(Keyboard::key_down(KeyCode::M) || main_j.button_state(JoystickControls::BTN_DOWN))
             a.play();
         //Update joystick.
         main_j.update();
@@ -290,11 +290,11 @@ class EditorApp : public App {
 
     void over_shut() {
         model.remove();
-        base_shader.remove();
+        xe_def::model_mat.shader.remove();
         dir_light_gizmo.remove();
-        gizmo_shader.remove();
+        gizmo_mat.shader.remove();
         lights.remove();
-        unlit_shader.remove();
+        unlit_mat.shader.remove();
         LightSource::reset_global_id();
     }
 

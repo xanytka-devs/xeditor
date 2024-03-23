@@ -8,7 +8,7 @@ using namespace XEngine;
 
 class LightSource : public Component {
 public:
-	LightSource() : Component() { }
+	LightSource() : Component(), id(-1), color(glm::vec4(0)), shader(nullptr) { }
 
 	LightSource(Transform& t_transform, glm::vec4 t_color = glm::vec4(1.0f),
 		glm::vec4 t_ambient = glm::vec4(0.5f),
@@ -26,7 +26,8 @@ public:
 	}
 
 	void update() {
-		light.render(*shader, id);
+		if(shader != nullptr)
+			light.render(*shader, id);
 	}
 
 	static void reset_global_id() {

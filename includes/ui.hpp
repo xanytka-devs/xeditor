@@ -10,16 +10,14 @@ public:
 	struct UIEditorData {
 		XEngine::App* t_app;
 		XEngine::Camera* t_camera;
-		Cube* t_cube;
-		Transform* t_model;
 		Scene* t_scene;
+		Material* default_mat;
 	};
 
 	static void init();
 	static void set_theme();
 	static void draw(UIEditorData t_data);
 	static void update_pos(XEngine::Camera* t_camera);
-	static bool can_render;
 };
 
 #endif // UI_H

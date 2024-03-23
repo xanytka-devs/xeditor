@@ -3,17 +3,8 @@ project(xeditor)
 set(EDITOR_PROJECT_NAME xeditor)
 add_subdirectory(external/xengine)
 
-set(EDITOR_INCLUDES
-	includes/components/light_cube.hpp
-	includes/components/billboard.hpp
-	includes/components/cord_plane.hpp
-	includes/components/light_source.hpp
-	includes/ui.hpp
-)
-set(EDITOR_SOURCES
-	src/main.cpp
-	src/ui.cpp
-)
+file(GLOB_RECURSE EDITOR_INCLUDES "includes/*.hpp")
+file(GLOB_RECURSE EDITOR_SOURCES "src/*.cpp")
 
 set(EDITOR_ALL
 	${EDITOR_SOURCES}

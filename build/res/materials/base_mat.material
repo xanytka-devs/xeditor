@@ -1,0 +1,10 @@
+{
+	"version": 0.1,
+	"engine": "xengine bare_bones",
+	"shaders": {
+		"opengl": {
+			"vertex": "object_vert.glsl",
+			"fragment": "object_frag.glsl"
+		}
+	}
+}

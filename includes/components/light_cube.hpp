@@ -31,9 +31,9 @@ public:
             draw_light(inst, t_shader);
     }
 
-    void render(XEngine::Shader t_shader) {
+    void render() {
         color = get_component<LightSource>().color;
-        Transform::render(t_shader, false);
+        Transform::render(false);
     }
 
     glm::vec4 color;

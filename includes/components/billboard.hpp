@@ -45,8 +45,8 @@ public:
     }
 
     glm::vec4 cam_rot = (*m_cam).rotation;
-    void render(XEngine::Shader t_shader) {
-        Transform::render(t_shader, true);
+    void render() {
+        Transform::render(true);
     }
 };
 
