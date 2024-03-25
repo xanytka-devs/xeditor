@@ -3,6 +3,7 @@
 #include <iostream>
 
 #include <xengine/app.hpp>
+#include <xengine/common.hpp>
 #include <xengine/enviroment.hpp>
 #include <xengine/utils.hpp>
 #include <../packages/xengine.audio/includes/audio.hpp>
@@ -12,14 +13,19 @@
 #include <xengine/rendering/window.hpp>
 #include <xengine/rendering/texture.hpp>
 #include <xengine/rendering/light.hpp>
-#include <xengine/rendering/transform.hpp>
 #include <xengine/physics/rigidbody.hpp>
 #include <xengine/physics/collider.hpp>
+#include <xengine/rendering/cubemap.hpp>
 
-#include "defaults.hpp"
 #include "components/light_cube.hpp"
-#include "components/billboard.hpp"
+#include "defaults.hpp"
+
+#ifdef XENGINE_UI
+#include <xengine/ui/text.hpp>
+#endif // XENGINE_UI
+#ifdef XENGINE_GUI
 #include "ui.hpp"
+#endif // XENGINE_GUI
 
 using namespace XEngine;
 
@@ -40,13 +46,19 @@ SpotLight spot_light = { camera.position, camera.forward, glm::cos(glm::radians(
     glm::vec4(1.f), glm::vec4(1.f) };
 Audio a{ "res\\sound.wav", false, {"test", 100.f, 2.f}};
 Material unlit_mat;
-Material gizmo_mat;
-Billboard dir_light_gizmo(glm::vec3(0.f, 1.f, 0.f), glm::vec4(glm::vec3(0.f), 1.f), glm::vec3(0.5f),
-    &camera, "res\\gizmos\\dir_light.png");
+#ifdef XENGINE_UI
+TextRenderer text_ren;
+Text text;
+Shader text_shader;
+#endif // XENGINE_UI
+Shader sky_shader;
+Cubemap skybox;
 
 int LightSource::global_id = 0;
 unsigned char Enviroment::scene_id = 0;
 SceneManager Enviroment::scene_manager = SceneManager();
+char** passed_args;
+int arg_count;
 
 class EditorApp : public App {
 
@@ -58,7 +70,7 @@ class EditorApp : public App {
         window.set_param(W_VSYNC, true);
         Renderer::print_host_info();
         //Add scene.
-        Enviroment::scene_manager.add_scene(Scene("Example scene"));
+        Enviroment::scene_manager.add_scene(Scene("Example scene", &camera));
         //Initialize component system.
         ComponentRegistry::instance().push<LightSource>();
         ComponentRegistry::instance().push<BoxCollider>();
@@ -67,14 +79,25 @@ class EditorApp : public App {
         //Initialize audio manager.
         AudioManager::initialize();
         AudioManager::print_host_info();
+        if(arg_count > 1)
+            if(std::string(passed_args[1])._Equal("--no_audio")) AudioManager::remove();
+#ifdef XENGINE_UI
+        //Load text.
+        text_ren.initialize();
+#endif // XENGINE_UI
+        //Skybox.
+        skybox.initialize(50);
+        skybox.load("res\\skybox\\sh.cubemap");
         over_init();
         //Joystick checks.
         main_j.update();
         //Initialize ImGui.
-        window.ui_initialize();
+        window.gui_initialize();
+#ifdef XENGINE_GUI
         UI::init();
         UI::update_pos(&camera);
         UI::set_theme();
+#endif // XENGINE_GUI
     }
 
     void over_init() {
@@ -93,10 +116,13 @@ class EditorApp : public App {
         for(unsigned int i = 0; i < point_lights_amount; i++)
             lights.create_instance(point_light_positions[i], glm::vec4(0, 0, 0, 1), glm::vec3(0.125f));
         lights.initialize();
-        //Gizmo.
-        gizmo_mat.shader = Shader("res\\materials\\object_vert.glsl", "res\\materials\\billboard_frag.glsl");
-        dir_light_gizmo.set_material(&gizmo_mat);
-        dir_light_gizmo.initialize();
+#ifdef XENGINE_UI
+        //Text.
+        text.load_font("res\\consola.ttf", 20);
+        text_shader = Shader("res\\materials\\text_vert.glsl", "res\\materials\\text_frag.glsl");
+#endif // XENGINE_UI
+        sky_shader = Shader("res\\materials\\skybox\\skybox_vert.glsl", "res\\materials\\skybox\\skybox_frag.glsl");
+        model.set_cubemap(skybox.get_id());
     }
 
     bool is_reloading = false;
@@ -161,24 +187,32 @@ class EditorApp : public App {
         xe_def::model_mat.shader.set_mat4("projection", projection);
         xe_def::model_mat.shader.set_mat4("view", view);
         xe_def::model_mat.shader.set_int("render_mode", mode);
+        xe_def::model_mat.shader.set_int("use_skybox", 1);
+        xe_def::model_mat.shader.set_float("material.skybox_refraction", xe_def::model_mat.skybox_refraction);
+        xe_def::model_mat.shader.set_float("material.skybox_refraction_strength",
+            xe_def::model_mat.skybox_refraction_strength);
         //Render light.
         unlit_mat.shader.enable();
         unlit_mat.shader.set_mat4("projection", projection);
         unlit_mat.shader.set_mat4("view", view);
         unlit_mat.shader.set_int("render_mode", mode);
         unlit_mat.shader.set_4_floats("color", lights.color);
-        //Gizmo.
-        gizmo_mat.shader.enable();
-        gizmo_mat.shader.set_mat4("projection", projection);
-        gizmo_mat.shader.set_mat4("view", view);
-        gizmo_mat.shader.set_4_floats("albedo_color", dir_light.color);
-        gizmo_mat.shader.set_int("render_mode", mode);
-        dir_light_gizmo.rotation = glm::vec4(dir_light.direction.y, 0.f, 0.f, 1.0f) * 10.f;
         //Render all transforms.
         for(Transform* t : Enviroment::get_current_scene()->transforms)
             t->render();
+        //Skybox.
+        skybox.render(sky_shader);
+#ifdef XENGINE_UI
+        //Draw text.
+        text_shader.enable();
+        text_shader.set_int("render_mode", mode);
+        text.render(text_shader, "FPS:" + std::to_string(fps), window.size(),
+            glm::vec2(275.0f, window.height / 1.06f), glm::vec2(1.0f), glm::vec3(1.0f));
+#endif // XENGINE_UI
+#ifdef XENGINE_GUI
         //UI rendering.
         UI::draw({ this, &camera, Enviroment::get_current_scene(), &xe_def::model_mat });
+#endif // XENGINE_GUI
     }
 
     bool clicked = false;
@@ -244,8 +278,10 @@ class EditorApp : public App {
             //Move with mouse wheel.
             if(mouse_dy != 0)
                 camera.position += camera.forward * (dt * mouse_dy * 2.5f);
+#ifdef XENGINE_GUI
             //Update UI.
             UI::update_pos(&camera);
+#endif // XENGINE_GUI
         } else {
             window.set_param(W_CURSOR, C_NONE);
             if(Keyboard::key_state(KeyCode::LEFT_SHIFT) || Keyboard::key_state(KeyCode::RIGHT_SHIFT)) {
@@ -283,25 +319,28 @@ class EditorApp : public App {
     virtual void on_shutdown() override {
         over_shut();
         AudioManager::remove();
-        window.ui_shutdown();
+        window.gui_shutdown();
         Utils::write_file("window_config.ini",
             "[Window][XEditor]\nSize=" + std::to_string(window.width) + "," + std::to_string(window.height));
     }
 
     void over_shut() {
-        model.remove();
+        for(Transform* t : Enviroment::get_current_scene()->transforms)
+            t->remove();
+#ifdef XENGINE_UI
+        text.remove();
+        text_shader.remove();
+#endif // XENGINE_UI
         xe_def::model_mat.shader.remove();
-        dir_light_gizmo.remove();
-        gizmo_mat.shader.remove();
-        lights.remove();
         unlit_mat.shader.remove();
         LightSource::reset_global_id();
     }
-
 };
 
-int main() {
+int main(int argc, char** argv) {
     //Entire application startup.
+    arg_count = argc;
+    passed_args = argv;
     //Get saved window size.
     std::vector<std::string> w_size = { "1300", "800" };
     std::string file = Utils::read_from_file("window_config.ini");

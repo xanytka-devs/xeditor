@@ -8,6 +8,8 @@ struct Material {
 	float emission_factor;
 	vec4 emission_color;
 	float shininess;
+	float skybox_refraction;
+	float skybox_refraction_strength;
 };
 
 uniform sampler2D diffuse0;
@@ -62,6 +64,8 @@ uniform int render_mode;
 uniform int no_textures;
 uniform Material material;
 uniform vec3 view_pos;
+uniform int use_skybox;
+uniform samplerCube skybox;
 
 #define MAX_POINT_LIGHTS 32
 #define MAX_SPOT_LIGHTS 8
@@ -96,6 +100,11 @@ void main() {
 	for(int s = 0; s < num_spot_lights; s++)
 		result += calc_spot_light(s, norm, view_dir, diff_map, spec_map, emis_map);
 	//Output.
+	if(use_skybox == 1) {
+		vec3 I = normalize(frag_POS - view_pos);
+		vec3 R = refract(I, normalize(frag_NORMAL), material.skybox_refraction);
+		result+=vec4(texture(skybox, -R).rgb * material.skybox_refraction_strength, 1.0);
+	}
 	if(gl_FrontFacing)
 		fragColor = result;
 	else

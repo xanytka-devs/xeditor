@@ -14,7 +14,8 @@ namespace fs = std::filesystem;
 #include "scene_editor.hpp"
 #include "ui.hpp"
 #include <xengine/physics/collider.hpp>
-
+#include <components/audio_player.hpp>
+#ifdef XENGINE_GUI
 void UI::init() {
     ImGuiIO& io = ImGui::GetIO();
     io.Fonts->AddFontFromFileTTF("res\\consola.ttf", 13, NULL, io.Fonts->GetGlyphRangesCyrillic());
@@ -90,6 +91,8 @@ void UI::set_theme() {
     style.Colors[ImGuiCol_NavWindowingHighlight] = _grey;
     style.Colors[ImGuiCol_NavWindowingDimBg] = _grey;
     style.Colors[ImGuiCol_ModalWindowDimBg] = _grey;
+    //Additional style.
+    style.ButtonTextAlign = ImVec2(0.f, 0.5f);
 }
 
 float bg_cols[] = { 0.15f, 0.15f, 0.15f };
@@ -143,8 +146,11 @@ static glm::vec4 DragFloat4(const char* t_name, glm::vec4 t_value,
     return glm::vec4(conversion_array[0], conversion_array[1], conversion_array[2], t_value.w);
 }
 
-Transform* scelected_obj = nullptr;
+Transform* selection = nullptr;
 bool did_select = false;
+bool show_add_comp_menu = false;
+bool show_geom_select = false;
+std::string src;
 static void draw_editor(XEngine::App* t_app, XEngine::Camera* t_camera) {
     //Basic values and info.
     ImGui::Text(("FPS: " + std::to_string(t_app->fps)).c_str());
@@ -170,63 +176,135 @@ static void draw_editor(XEngine::App* t_app, XEngine::Camera* t_camera) {
     }
     //Object redactor.
     if(did_select) {
-        if(ImGui::CollapsingHeader(scelected_obj->name.c_str(), ImGuiTreeNodeFlags_DefaultOpen)) {
-            scelected_obj->position = DragFloat3("Position", scelected_obj->position, 0.1f);
-            scelected_obj->rotation = DragFloat4("Rotation", scelected_obj->rotation, 0.1f);
-            scelected_obj->size = DragFloat3("Scale", scelected_obj->size, 0.1f);
+        if(selection->name.length() == 0) selection->name = "New Object";
+        if(ImGui::CollapsingHeader(selection->name.c_str(), ImGuiTreeNodeFlags_DefaultOpen)) {
+            ImGui::InputText("Name", &selection->name);
+            selection->position = DragFloat3("Position", selection->position, 0.1f);
+            selection->rotation = DragFloat4("Rotation", selection->rotation, 0.1f);
+            selection->size = DragFloat3("Scale", selection->size, 0.1f);
 #ifdef XENGINE_IO
-            if (ImGui::Button("Load model")) scelected_obj->load_model(XEngine::OS::open_file_dialog(scelected_obj->get_model_path()));
+            if(ImGui::Button("Load model")) selection->load_model(XEngine::OS::open_file_dialog(selection->get_model_path()));
+            ImGui::SameLine();
 #endif
-            ImGui::Text(("Instances: " + std::to_string(scelected_obj->instances_amount())).c_str());
-            ImGui::Text(("Components (" + std::to_string(scelected_obj->components_amount()) + ")").c_str());
+            if(ImGui::Button("Generate model")) show_geom_select = !show_geom_select;
+            if(show_geom_select) {
+                ImGui::BeginChild("GenerativeModelSelector",
+                    ImVec2(ImGui::GetContentRegionAvail().x, 120), ImGuiChildFlags_None);
+                if(ImGui::Button("Plane")) {
+                    selection->add_mesh(Geometry::Plane());
+                    show_geom_select = false;
+                }
+                if(ImGui::Button("Cube")) {
+                    selection->add_mesh(Geometry::Cube());
+                    show_geom_select = false;
+                }
+                ImGui::EndChild();
+            }
+            ImGui::Text(("Instances: " + std::to_string(selection->instances_amount())).c_str());
+            ImGui::Text(("Components (" + std::to_string(selection->components_amount()) + ")").c_str());
+            ImGui::SameLine();
+            if(ImGui::Button("+"))
+                show_add_comp_menu = !show_add_comp_menu;
+            if(show_add_comp_menu) {
+                ImGui::BeginChild("ComponentSelector",
+                    ImVec2(ImGui::GetContentRegionAvail().x, 120), ImGuiChildFlags_None);
+                ImGui::BeginDisabled(selection->get_component<AudioPlayer>().is_initialized());
+                if(ImGui::Button("Audio Player##add", ImVec2(ImGui::GetContentRegionAvail().x, 20))) {
+                    selection->add_component<AudioPlayer>();
+                    selection->get_component<AudioPlayer>().initialize();
+                    show_add_comp_menu = false;
+                }
+                ImGui::EndDisabled();
+                ImGui::BeginDisabled(selection->get_component<BoxCollider>().is_initialized());
+                if(ImGui::Button("Box Collider##add", ImVec2(ImGui::GetContentRegionAvail().x, 20))) {
+                    selection->add_component<BoxCollider>();
+                    selection->get_component<BoxCollider>().initialize();
+                    show_add_comp_menu = false;
+                }
+                ImGui::EndDisabled();
+                ImGui::BeginDisabled(selection->get_component<LightSource>().is_initialized());
+                if(ImGui::Button("Light Source##add", ImVec2(ImGui::GetContentRegionAvail().x, 20))) {
+                    selection->add_component<LightSource>();
+                    selection->get_component<LightSource>().initialize();
+                    show_add_comp_menu = false;
+                }
+                ImGui::EndDisabled();
+                ImGui::BeginDisabled(selection->get_component<Rigidbody>().is_initialized());
+                if (ImGui::Button("Rigidbody##add", ImVec2(ImGui::GetContentRegionAvail().x, 20))) {
+                    selection->add_component<Rigidbody>(1.0f, glm::vec3(0.0f), glm::vec3(0.0f), true);
+                    selection->get_component<Rigidbody>().initialize();
+                    show_add_comp_menu = false;
+                }
+                ImGui::EndDisabled();
+                ImGui::BeginDisabled(selection->get_component<SphereCollider>().is_initialized());
+                if(ImGui::Button("Sphere Collider##add", ImVec2(ImGui::GetContentRegionAvail().x, 20))) {
+                    selection->add_component<SphereCollider>();
+                    selection->get_component<SphereCollider>().initialize();
+                    show_add_comp_menu = false;
+                }
+                ImGui::EndDisabled();
+                ImGui::EndChild();
+            }
             //Components.
             {
-                if(scelected_obj->get_component<LightSource>().is_initialized()) {
-                    if(ImGui::TreeNode("LightSource")) {
+                if(selection->get_component<AudioPlayer>().is_initialized()) {
+                    if(ImGui::TreeNode("Audio Player##comp_edit")) {
+                        src = selection->get_component<AudioPlayer>().get_source();
+                        ImGui::InputText("Source", &src);
+                        if(src != selection->get_component<AudioPlayer>().get_source())
+                            if(std::filesystem::exists(src))
+                                selection->get_component<AudioPlayer>().set_source(src.c_str());
+                        if(ImGui::Button("Play")) selection->get_component<AudioPlayer>().play();
+                        if(ImGui::Button("Stop")) selection->get_component<AudioPlayer>().stop();
+                        ImGui::TreePop();
+                    }
+                }
+                if(selection->get_component<BoxCollider>().is_initialized()) {
+                    if(ImGui::TreeNode("Box Collider##comp_edit")) {
+                        selection->get_component<BoxCollider>().center =
+                            DragFloat3("Center", selection->get_component<BoxCollider>().center, 0.1f);
+                        selection->get_component<BoxCollider>().rotation =
+                            DragFloat3("Rotation", selection->get_component<BoxCollider>().rotation, 0.1f);
+                        selection->get_component<BoxCollider>().size =
+                            DragFloat3("Size", selection->get_component<BoxCollider>().size, 0.1f);
+                        ImGui::TreePop();
+                    }
+                }
+                if (selection->get_component<LightSource>().is_initialized()) {
+                    if (ImGui::TreeNode("Light Source##comp_edit")) {
                         ImGui::Text(("PointLight global ID: " + std::to_string(LightSource::global_id)).c_str());
-                        scelected_obj->get_component<LightSource>().color = ColorEdit4("Color",
-                            scelected_obj->get_component<LightSource>().color);
+                        selection->get_component<LightSource>().color = ColorEdit4("Color",
+                            selection->get_component<LightSource>().color);
                         ImGui::TreePop();
                     }
                 }
-                if(scelected_obj->get_component<BoxCollider>().is_initialized()) {
-                    if(ImGui::TreeNode("Box Collider")) {
-                        scelected_obj->get_component<BoxCollider>().center =
-                            DragFloat3("Center", scelected_obj->get_component<BoxCollider>().center, 0.1f);
-                        scelected_obj->get_component<BoxCollider>().rotation =
-                            DragFloat3("Rotation", scelected_obj->get_component<BoxCollider>().rotation, 0.1f);
-                        scelected_obj->get_component<BoxCollider>().size =
-                            DragFloat3("Size", scelected_obj->get_component<BoxCollider>().size, 0.1f);
-                        ImGui::TreePop();
-                    }
-                }
-                if(scelected_obj->get_component<SphereCollider>().is_initialized()) {
-                    if(ImGui::TreeNode("Sphere Collider")) {
-                        scelected_obj->get_component<SphereCollider>().center =
-                            DragFloat3("Center", scelected_obj->get_component<SphereCollider>().center, 0.1f);
-                        ImGui::DragFloat("Radius", &scelected_obj->get_component<SphereCollider>().radius, 0.1f);
-                        ImGui::TreePop();
-                    }
-                }
-                if(scelected_obj->get_component<Rigidbody>().is_initialized()) {
-                    if(ImGui::TreeNode("Rigidbody")) {
-                        ImGui::Checkbox("Use gravity", &scelected_obj->get_component<Rigidbody>().use_gravity);
-                        float mass = scelected_obj->get_component<Rigidbody>().mass;
+                if (selection->get_component<Rigidbody>().is_initialized()) {
+                    if (ImGui::TreeNode("Rigidbody##comp_edit")) {
+                        ImGui::Checkbox("Use gravity", &selection->get_component<Rigidbody>().use_gravity);
+                        float mass = selection->get_component<Rigidbody>().mass;
                         ImGui::DragFloat("Mass", &mass, 0.1f, 0.f);
-                        scelected_obj->get_component<Rigidbody>().mass = mass;
-                        scelected_obj->get_component<Rigidbody>().acceleration = DragFloat3("Acceleration",
-                            scelected_obj->get_component<Rigidbody>().acceleration, 0.1f);
-                        scelected_obj->get_component<Rigidbody>().velocity = DragFloat3("Velocity",
-                            scelected_obj->get_component<Rigidbody>().velocity, 0.1f);
+                        selection->get_component<Rigidbody>().mass = mass;
+                        selection->get_component<Rigidbody>().acceleration = DragFloat3("Acceleration",
+                            selection->get_component<Rigidbody>().acceleration, 0.1f);
+                        selection->get_component<Rigidbody>().velocity = DragFloat3("Velocity",
+                            selection->get_component<Rigidbody>().velocity, 0.1f);
+                        ImGui::TreePop();
+                    }
+                }
+                if(selection->get_component<SphereCollider>().is_initialized()) {
+                    if(ImGui::TreeNode("Sphere Collider##comp_edit")) {
+                        selection->get_component<SphereCollider>().center =
+                            DragFloat3("Center", selection->get_component<SphereCollider>().center, 0.1f);
+                        ImGui::DragFloat("Radius", &selection->get_component<SphereCollider>().radius, 0.1f);
                         ImGui::TreePop();
                     }
                 }
             }
             if(ImGui::Button("Delete")) {
                 std::vector<Transform*>* vec = &Enviroment::get_current_scene()->transforms;
-                auto it = std::find(vec->begin(), vec->end(), scelected_obj);
+                auto it = std::find(vec->begin(), vec->end(), selection);
                 did_select = false;
-                scelected_obj = nullptr;
+                selection = nullptr;
                 if(it != vec->end()) {
                     (*it)->remove();
                     vec->erase(it);
@@ -253,8 +331,8 @@ static void draw_scene_viewer(Scene* t_scene, Material* default_mat) {
     if(ImGui::CollapsingHeader(t_scene->name)) {
         int i = 0;
         for(Transform* t : t_scene->transforms) {
-            if(ImGui::Button((t->name + "##" + std::to_string(i)).c_str())) {
-                scelected_obj = t;
+            if(ImGui::Button((t->name + "##" + std::to_string(i)).c_str(), ImVec2(ImGui::GetContentRegionAvail().x, 20))) {
+                selection = t;
                 did_select = true;
             }
             i++;
@@ -425,3 +503,4 @@ void UI::draw(UIEditorData t_data) {
         ImGui::End();
     }
 }
+#endif // XENGINE_GUI

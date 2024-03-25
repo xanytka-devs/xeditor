@@ -12,7 +12,9 @@ namespace xe_def {
         glm::vec4 emission_color = glm::vec4(0);
         float emission_factor = 0.f;
         float shininess = 0.5f;
+        float skybox_refraction = -1.f;
+        float skybox_refraction_strength = 0.5f;
     };
-    LitMaterial model_mat = { XEngine::Shader(), glm::vec4(0), glm::vec4(1), glm::vec4(0), glm::vec4(0), glm::vec4(0), 0.f, 0.5f };
+    LitMaterial model_mat = { XEngine::Shader() };
 }
 #endif // DEFAULTS_H

@@ -488,15 +488,6 @@ XEngine_SOURCE_DIR:STATIC=G:/! New/xeditor/external/xengine
 assimp_LIB_DEPENDS:STATIC=general;zlibstatic;
 
 //Value Computed by CMake
-audio_demo_BINARY_DIR:STATIC=G:/! New/xeditor/build/external/xengine/examples/audio_demo
-
-//Value Computed by CMake
-audio_demo_IS_TOP_LEVEL:STATIC=OFF
-
-//Value Computed by CMake
-audio_demo_SOURCE_DIR:STATIC=G:/! New/xeditor/external/xengine/examples/audio_demo
-
-//Value Computed by CMake
 glad_BINARY_DIR:STATIC=G:/! New/xeditor/build/external/xengine/xengine/glad
 
 //Value Computed by CMake
@@ -522,15 +513,6 @@ testing_IS_TOP_LEVEL:STATIC=OFF
 
 //Value Computed by CMake
 testing_SOURCE_DIR:STATIC=G:/! New/xeditor/external/xengine/testing
-
-//Value Computed by CMake
-triangle_demo_BINARY_DIR:STATIC=G:/! New/xeditor/build/external/xengine/examples/triangle_demo
-
-//Value Computed by CMake
-triangle_demo_IS_TOP_LEVEL:STATIC=OFF
-
-//Value Computed by CMake
-triangle_demo_SOURCE_DIR:STATIC=G:/! New/xeditor/external/xengine/examples/triangle_demo
 
 //Value Computed by CMake
 xeditor_BINARY_DIR:STATIC=G:/! New/xeditor/build
@@ -690,7 +672,7 @@ CMAKE_MODULE_LINKER_FLAGS_RELWITHDEBINFO-ADVANCED:INTERNAL=1
 //ADVANCED property for variable: CMAKE_MT
 CMAKE_MT-ADVANCED:INTERNAL=1
 //number of local generators
-CMAKE_NUMBER_OF_MAKEFILES:INTERNAL=12
+CMAKE_NUMBER_OF_MAKEFILES:INTERNAL=11
 //Platform information initialized
 CMAKE_PLATFORM_INFO_INITIALIZED:INTERNAL=1
 //noop for ranlib
