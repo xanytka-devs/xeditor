@@ -20,9 +20,6 @@
 #include "components/light_cube.hpp"
 #include "defaults.hpp"
 
-#ifdef XENGINE_UI
-#include <xengine/ui/text.hpp>
-#endif // XENGINE_UI
 #ifdef XENGINE_GUI
 #include "ui.hpp"
 #endif // XENGINE_GUI
@@ -46,11 +43,6 @@ SpotLight spot_light = { camera.position, camera.forward, glm::cos(glm::radians(
     glm::vec4(1.f), glm::vec4(1.f) };
 Audio a{ "res\\sound.wav", false, {"test", 100.f, 2.f}};
 Material unlit_mat;
-#ifdef XENGINE_UI
-TextRenderer text_ren;
-Text text;
-Shader text_shader;
-#endif // XENGINE_UI
 Shader sky_shader;
 Cubemap skybox;
 
@@ -81,10 +73,6 @@ class EditorApp : public App {
         AudioManager::print_host_info();
         if(arg_count > 1)
             if(std::string(passed_args[1])._Equal("--no_audio")) AudioManager::remove();
-#ifdef XENGINE_UI
-        //Load text.
-        text_ren.initialize();
-#endif // XENGINE_UI
         //Skybox.
         skybox.initialize(50);
         skybox.load("res\\skybox\\sh.cubemap");
@@ -116,11 +104,7 @@ class EditorApp : public App {
         for(unsigned int i = 0; i < point_lights_amount; i++)
             lights.create_instance(point_light_positions[i], glm::vec4(0, 0, 0, 1), glm::vec3(0.125f));
         lights.initialize();
-#ifdef XENGINE_UI
-        //Text.
-        text.load_font("res\\consola.ttf", 20);
-        text_shader = Shader("res\\materials\\text_vert.glsl", "res\\materials\\text_frag.glsl");
-#endif // XENGINE_UI
+        //Cubemap.
         sky_shader = Shader("res\\materials\\skybox\\skybox_vert.glsl", "res\\materials\\skybox\\skybox_frag.glsl");
         model.set_cubemap(skybox.get_id());
     }
@@ -177,15 +161,12 @@ class EditorApp : public App {
         }
         //Model.
         xe_def::model_mat.shader.enable();
-        xe_def::model_mat.shader.set_3_floats("view_pos", camera.position);
         xe_def::model_mat.shader.set_4_floats("material.diffuse", xe_def::model_mat.diffuse);
         xe_def::model_mat.shader.set_4_floats("material.specular", xe_def::model_mat.specular);
         xe_def::model_mat.shader.set_4_floats("material.emission", xe_def::model_mat.emission);
         xe_def::model_mat.shader.set_4_floats("material.emission_color", xe_def::model_mat.emission_color);
         xe_def::model_mat.shader.set_float("material.shininess", xe_def::model_mat.shininess);
         xe_def::model_mat.shader.set_float("material.emission_factor", xe_def::model_mat.emission_factor);
-        xe_def::model_mat.shader.set_mat4("projection", projection);
-        xe_def::model_mat.shader.set_mat4("view", view);
         xe_def::model_mat.shader.set_int("render_mode", mode);
         xe_def::model_mat.shader.set_int("use_skybox", 1);
         xe_def::model_mat.shader.set_float("material.skybox_refraction", xe_def::model_mat.skybox_refraction);
@@ -193,8 +174,6 @@ class EditorApp : public App {
             xe_def::model_mat.skybox_refraction_strength);
         //Render light.
         unlit_mat.shader.enable();
-        unlit_mat.shader.set_mat4("projection", projection);
-        unlit_mat.shader.set_mat4("view", view);
         unlit_mat.shader.set_int("render_mode", mode);
         unlit_mat.shader.set_4_floats("color", lights.color);
         //Render all transforms.
@@ -202,13 +181,6 @@ class EditorApp : public App {
             t->render();
         //Skybox.
         skybox.render(sky_shader);
-#ifdef XENGINE_UI
-        //Draw text.
-        text_shader.enable();
-        text_shader.set_int("render_mode", mode);
-        text.render(text_shader, "FPS:" + std::to_string(fps), window.size(),
-            glm::vec2(275.0f, window.height / 1.06f), glm::vec2(1.0f), glm::vec3(1.0f));
-#endif // XENGINE_UI
 #ifdef XENGINE_GUI
         //UI rendering.
         UI::draw({ this, &camera, Enviroment::get_current_scene(), &xe_def::model_mat });
@@ -216,6 +188,7 @@ class EditorApp : public App {
     }
 
     bool clicked = false;
+    float accel = 1.f;
     void input() {
         //On 'Esc' close app.
         if(Keyboard::key_state(KeyCode::ESCAPE) || main_j.button_state(JoystickControls::J_HOME))
@@ -250,16 +223,20 @@ class EditorApp : public App {
             float dt = Enviroment::delta_time;
             window.set_param(W_CURSOR, C_DISABLED);
             //Position changes.
+            //Acceleration.
+            if(Keyboard::key_state(KeyCode::LEFT_CONTROL) || Keyboard::key_state(KeyCode::RIGHT_CONTROL))
+                accel += 0.001f;
+            else accel = 1.f;
             // F/B movement.
             if(Keyboard::key_state(KeyCode::W) || j_y <= -0.5f)
-                camera.position += camera.forward * (dt * 2.5f);
+                camera.position += camera.forward * (dt * 2.5f) * accel;
             if(Keyboard::key_state(KeyCode::S) || j_y >= 0.5f)
-                camera.position -= camera.forward * (dt * 2.5f);
+                camera.position -= camera.forward * (dt * 2.5f) * accel;
             // R/L movement.
             if(Keyboard::key_state(KeyCode::D) || j_x >= 0.5f)
-                camera.position += camera.right * (dt * 2.5f);
+                camera.position += camera.right * (dt * 2.5f) * accel;
             if(Keyboard::key_state(KeyCode::A) || j_x <= -0.5f)
-                camera.position -= camera.right * (dt * 2.5f);
+                camera.position -= camera.right * (dt * 2.5f) * accel;
             // U/D movement.
             if(Keyboard::key_state(KeyCode::SPACEBAR) || main_j.button_state(JoystickControls::DPAD_UP))
                 camera.position += glm::vec3(0.f, 1.f, 0.f) * (dt * 2.5f);
@@ -308,8 +285,8 @@ class EditorApp : public App {
 
     void rotate_camera(double dz, double dy) {
         camera.rotation.z += static_cast<float>(dz);
-        if(camera.rotation.z >= 360) camera.rotation.z -= 360;
-        if(camera.rotation.z <= -360) camera.rotation.z += 360;
+        if(camera.rotation.z >= 360.f) camera.rotation.z -= 360.f;
+        if(camera.rotation.z <= -360.f) camera.rotation.z += 360.f;
         camera.rotation.y += static_cast<float>(dy);
         if(camera.rotation.y > 89.f) camera.rotation.y = 89.f;
         else if(camera.rotation.y < -89.f) camera.rotation.y = -89.f;
@@ -327,10 +304,6 @@ class EditorApp : public App {
     void over_shut() {
         for(Transform* t : Enviroment::get_current_scene()->transforms)
             t->remove();
-#ifdef XENGINE_UI
-        text.remove();
-        text_shader.remove();
-#endif // XENGINE_UI
         xe_def::model_mat.shader.remove();
         unlit_mat.shader.remove();
         LightSource::reset_global_id();
